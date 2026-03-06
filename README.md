@@ -92,18 +92,35 @@ If your server requires a specific `.pem` file to connect via SSH (common on AWS
 
 ## Configuring AI Models
 
-OpenClaw stores API keys and model profiles in its own internal SQLite database within your `openclaw-config` folder, keeping your `.env` file clean. You can configure your models in two ways:
+OpenClaw stores API keys and model profiles in its own internal SQLite database within your `openclaw-config` folder, keeping your `.env` file clean. 
 
-**Method 1: The Web UI (Recommended)**
+### Option 1: Using Official APIs (OpenAI, Anthropic, etc.)
+If you want fast responses and do not mind paying for API usage:
 1. Access the web interface at `http://localhost:18789` (via your SSH tunnel).
-2. Navigate to the **Settings** or **AI Providers** section.
-3. Paste your API keys (OpenAI, Anthropic, etc.) and save.
+2. Navigate to the **Settings** > **AI Providers** section.
+3. Paste your official API key (e.g., your `sk-...` key from OpenAI) into the respective box and save.
+4. When starting a chat, simply select `gpt-4o` or `claude-3-5-sonnet` from the dropdown list.
 
-**Method 2: The Command Line (CLI)**
-If you prefer managing the server purely via the terminal, you can inject keys directly into the running OpenClaw container's database:
+### Option 2: Using Free Local Models (Ollama)
+This repository comes pre-configured with a private **Ollama** container. This allows you to download open-source AI models and run them entirely on your VPS's CPU and RAM for free. *(Note: Without a GPU, generation speed will be noticeably slower than Option 1)*.
+
+**Step A: Download a Model**
+First, you need to tell the Ollama container to download a model (like `llama3:8b` or `qwen2.5:7b`). Run this command on your VPS terminal:
 ```bash
-docker exec -it openclaw-cli npx openclaw config set ai.openai.apiKey "sk-your-openai-key"
+docker exec -it ollama ollama run llama3:8b
 ```
+*(Type `/bye` to exit the chat prompt once it finishes downloading).*
+
+**Step B: Connect OpenClaw to Ollama**
+Because they share the same Docker network, OpenClaw does not need an API key to talk to Ollama. 
+1. Open the OpenClaw Web UI (`http://localhost:18789`).
+2. Go to **Settings** > **AI Providers**.
+3. Find the **Ollama** section.
+4. Set the **Provider URL** strictly to `http://ollama:11434`. *(Do not use localhost or an IP address, the word `ollama` uses Docker's internal DNS).*
+5. You can put anything (like `ollama-local`) in the API Key box, as Ollama doesn't actually check it.
+6. When starting a chat, select your downloaded local model (e.g., `llama3:8b`) from the dropdown!
+
+*If you change your mind and no longer want to host local models, simply delete the `ollama:` block from your `docker-compose.yml` and run `docker compose up -d` to clean it up.*
 
 ## Managing the Service
 

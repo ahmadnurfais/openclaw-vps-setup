@@ -80,3 +80,17 @@ services:
     entrypoint: ["node", "dist/index.js"]
     depends_on:
       - openclaw-gateway
+
+  ## --- OPTIONAL: LOCAL AI MODELS (OLLAMA) ---
+  ## This container allows you to run free, local AI models (like Llama 3 or Qwen) 
+  ## directly on your VPS CPU/RAM, keeping everything 100% private. 
+  ##
+  ## HOW TO DISABLE: If you decide local models are too slow or you just want to use
+  ## OpenAI/Claude APIs, simply delete this entire `ollama:` block (lines 80-86)
+  ## and run `docker compose up -d`. Docker will automatically remove it.
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    volumes:
+      - ./ollama-data:/root/.ollama
