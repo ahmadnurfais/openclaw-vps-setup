@@ -12,17 +12,23 @@ services:
     volumes:
       - ${OPENCLAW_CONFIG_DIR}:/home/node/.openclaw
       - ${OPENCLAW_WORKSPACE_DIR}:/home/node/.openclaw/workspace
-      ## Uncomment the lines below to enable sandbox isolation
-      ## (agents.defaults.sandbox). Requires Docker CLI in the image
-      ## (build with --build-arg OPENCLAW_INSTALL_DOCKER_CLI=1) or use
-      ## docker-setup.sh with OPENCLAW_SANDBOX=1 for automated setup.
+      ## --- ADVANCED: SANDBOX ISOLATION (DOCKER-IN-DOCKER) ---
+      ## The lines below are UNCOMMENTED to allow OpenClaw to create temporary Docker
+      ## containers to run code (like Python scripts) safely. 
+      ## WARNING: Giving a container access to docker.sock is essentially giving it 
+      ## ROOT access to your VPS. Only do this if your web port is securely locked 
+      ## down to localhost (127.0.0.1) as configured in the 'ports' section below!
       ## Set DOCKER_GID to the host's docker group GID (run: stat -c '%g' /var/run/docker.sock).
-      # - /var/run/docker.sock:/var/run/docker.sock
-    # group_add:
-    #   - "${DOCKER_GID:-999}"
+      - /var/run/docker.sock:/var/run/docker.sock
+    group_add:
+      - "${DOCKER_GID:-999}"
     ports:
-      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
-      - "${OPENCLAW_BRIDGE_PORT:-18790}:18790"
+      ## --- SECURITY: LOCALHOST BINDING ---
+      ## By adding '127.0.0.1:', the OpenClaw Gateway will ONLY listen for connections 
+      ## coming from inside the VPS itself. It is INVISIBLE to the public internet.
+      ## You MUST use an SSH Tunnel from your computer to access the UI (See README Option A).
+      - "127.0.0.1:${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "127.0.0.1:${OPENCLAW_BRIDGE_PORT:-18790}:18790"
     init: true
     restart: unless-stopped
     command:

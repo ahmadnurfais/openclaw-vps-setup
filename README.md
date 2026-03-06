@@ -1,47 +1,94 @@
-# OpenClaw VPS Setup
+# OpenClaw VPS Setup (Secure Private Edition)
 
-This repository contains the official configuration files to deploy OpenClaw on a Virtual Private Server (VPS) using Docker Compose.
+This is my personal repository used to deploy [OpenClaw](https://github.com/openclaw/openclaw) on a Virtual Private Server (VPS). 
+
+While the official OpenClaw documentation provides a great starting point, this specific configuration is tailored for **maximum security while enabling advanced "Sandbox Isolation"**. Because giving an AI agent Docker access (via `docker.sock`) is incredibly dangerous if exposed to the internet, this setup completely blocks public web access. 
+
+If you are a newbie like me trying to set this up safely, feel free to use or modify this! You do **not** need to open any web ports on your VPS firewall (like UFW); we will tunnel everything securely through SSH.
+
+## Why Docker over a Native Host Install?
+
+If you are like me and run other active services (websites, databases, etc.) on your VPS, you **should** run OpenClaw in Docker. Here is why I chose this setup over a direct host installation:
+
+**Pros of Docker:**
+- **Zero Dependency Clashes:** Keeps OpenClaw entirely isolated. It will not break any existing apps or node versions on your server.
+- **Easy Cleanup:** If the AI breaks its environment, you just destroy the container and spin it back up.
+- **Security Boundaries:** While we map `docker.sock` for advanced tasks, the agent itself starts with heavily restricted networking and privileges compared to a raw Linux user.
+
+**Cons of Docker (Trade-offs):**
+- **Browser Automation:** Features where the AI tries to open a real web browser (Puppeteer/Playwright) are harder to configure and troubleshoot inside a headless container.
+- **File Permissions:** Files created in the `openclaw-workspace` are owned by Docker's internal user (`node`), which can cause minor read/write annoyances if you try editing them directly on the VPS host.
+- **System Blindness:** The AI cannot see your VPS desktop, process list, or other running services.
 
 ## Prerequisites
 
 - A Linux VPS (Ubuntu 22.04 or 24.04 recommended)
-- Root or sudo privileges
+- SSH access to the VPS
 - [Docker](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/) installed
 
 ## Deployment Instructions
 
 1. **Clone this repository to your VPS:**
    ```bash
-   git clone <your-repository-url> openclaw-setup
+   git clone https://github.com/ahmadnurfais/openclaw-vps-setup.git openclaw-setup
    cd openclaw-setup
    ```
 
-2. **Create necessary directories:**
-   The official OpenClaw Docker composition requires separate directories for configuration and workspace context. Create them inside your cloned repository:
+2. **Create Data Directories:**
+   Create the folders where OpenClaw will permanently save its brain and workspace:
    ```bash
    mkdir openclaw-config openclaw-workspace
    ```
 
 3. **Configure Environment Variables:**
-   Copy the example environment file:
    ```bash
    cp .env.example .env
-   ```
-   Edit the `.env` file using a text editor (like `nano` or `vim`). You must provide a secure `OPENCLAW_GATEWAY_TOKEN` and the necessary API keys for your preferred AI providers. Make sure the relative paths for `OPENCLAW_CONFIG_DIR` and `OPENCLAW_WORKSPACE_DIR` match the folders you just created.
-   ```bash
    nano .env
    ```
+   Add your secure `OPENCLAW_GATEWAY_TOKEN` and your AI provider API keys (OpenAI, Anthropic). 
 
-4. **Launch OpenClaw:**
-   Start the services (gateway and cli) in detached mode:
+4. **Get your Docker Group ID (Crucial for Sandboxing):**
+   Because we are letting the OpenClaw container talk to your host's Docker engine to spin up sandboxes, it needs permission. Run this command on your VPS to get the ID number:
+   ```bash
+   stat -c '%g' /var/run/docker.sock
+   ```
+   Open your `.env` file again and add that number at the bottom like this (replace 999 with your number):
+   `DOCKER_GID=999`
+
+5. **Launch OpenClaw:**
    ```bash
    docker compose up -d
    ```
+   *Note: If you run `ufw status` on your VPS, you do NOT need to open port 18789. The `docker-compose.yml` is hardcoded to `127.0.0.1`, making it invisible to the outside world.*
 
-5. **Access the Admin Interface:**
-   Once running, you can access the OpenClaw Gateway at `http://<your-vps-ip>:18789`. You will need your `OPENCLAW_GATEWAY_TOKEN` to authenticate.
-   
-   *Security Note: It is highly recommended to secure the web interface further by setting up a reverse proxy (like Nginx or Caddy) with HTTPS, or by accessing it locally via an SSH tunnel.*
+## Accessing the Admin Interface
+
+Because the web UI is blocked from the internet, you cannot just type your VPS IP into your browser. You must create a secure "tunnel" from your personal computer to the VPS.
+
+### Option A: Standard SSH Tunnel (Using Default Keys or Passwords)
+
+1. **On your personal laptop/computer**, open a terminal or command prompt.
+2. Run the following SSH Tunnel command (replace `root@your-vps-ip` with your actual VPS login):
+   ```bash
+   ssh -L 18789:localhost:18789 root@your-vps-ip
+   ```
+3. Leave that terminal window open! As long as it is running, the tunnel connects your laptop to the secure OpenClaw server.
+4. Open your web browser and go to: `http://localhost:18789`
+5. Enter the `OPENCLAW_GATEWAY_TOKEN` you created in your `.env` file.
+
+### Option B: SSH Tunnel (Using a `.pem` Identity File)
+
+If your server requires a specific `.pem` file to connect via SSH (common on AWS, EC2, or custom configurations), you need to pass it into the tunnel command using the `-i` flag.
+
+*(If you do not know how to generate or configure a `.pem` file for SSH access, please refer to my guide here: [https://www.ahmadnurfais.my.id/](https://www.ahmadnurfais.my.id/))*
+
+1. Run the SSH Tunnel command, pointing to your `.pem` key:
+   ```bash
+   ssh -i /path/to/your/key.pem -L 18789:localhost:18789 root@your-vps-ip
+   ```
+2. Leave the terminal window open to maintain the connection.
+3. Open your web browser and go to: `http://localhost:18789`
+4. Log in using your `OPENCLAW_GATEWAY_TOKEN`.
 
 ## Managing the Service
 
