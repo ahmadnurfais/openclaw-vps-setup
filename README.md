@@ -45,7 +45,7 @@ If you are like me and run other active services (websites, databases, etc.) on 
    cp .env.example .env
    nano .env
    ```
-   Add your secure `OPENCLAW_GATEWAY_TOKEN` and your AI provider API keys (OpenAI, Anthropic). 
+   Add your secure `OPENCLAW_GATEWAY_TOKEN`. *(Note: You do not need to add AI API keys here; they are managed internally by OpenClaw).* 
 
 4. **Get your Docker Group ID (Crucial for Sandboxing):**
    Because we are letting the OpenClaw container talk to your host's Docker engine to spin up sandboxes, it needs permission. Run this command on your VPS to get the ID number:
@@ -89,6 +89,21 @@ If your server requires a specific `.pem` file to connect via SSH (common on AWS
 2. Leave the terminal window open to maintain the connection.
 3. Open your web browser and go to: `http://localhost:18789`
 4. Log in using your `OPENCLAW_GATEWAY_TOKEN`.
+
+## Configuring AI Models
+
+OpenClaw stores API keys and model profiles in its own internal SQLite database within your `openclaw-config` folder, keeping your `.env` file clean. You can configure your models in two ways:
+
+**Method 1: The Web UI (Recommended)**
+1. Access the web interface at `http://localhost:18789` (via your SSH tunnel).
+2. Navigate to the **Settings** or **AI Providers** section.
+3. Paste your API keys (OpenAI, Anthropic, etc.) and save.
+
+**Method 2: The Command Line (CLI)**
+If you prefer managing the server purely via the terminal, you can inject keys directly into the running OpenClaw container's database:
+```bash
+docker exec -it openclaw-cli npx openclaw config set ai.openai.apiKey "sk-your-openai-key"
+```
 
 ## Managing the Service
 
