@@ -62,11 +62,42 @@ If you are like me and run other active services (websites, databases, etc.) on 
    *Note: If you run `ufw status` on your VPS, you do NOT need to open port 18789. The `docker-compose.yml` is hardcoded to `127.0.0.1`, making it invisible to the outside world.*
 
 6. **Complete the First-Time Onboarding:**
-   After the first launch, the `openclaw-cli` container will exit immediately and disappear from `docker ps`. This is **expected** — it means the CLI has not been configured yet. Run the onboarding command to complete the setup:
+   After the first launch, the `openclaw-cli` container will exit immediately and disappear from `docker ps`. This is **expected** — it means the CLI has not been configured yet.
+
+   **If you are using a local Ollama model**, you must download the model before running onboarding (skip this block if you are using OpenAI, Anthropic, etc.):
+   ```bash
+   # Enter the Ollama container shell
+   docker exec -it ollama bash
+
+   # Pull your model — choose the size based on your VPS RAM:
+   # 16 GB RAM or more → use 14b
+   # Under 16 GB RAM  → use 7b
+   ollama pull qwen2.5-coder:14b
+
+   # Verify the model was downloaded successfully
+   ollama list
+
+   # Exit the container shell
+   exit
+   ```
+
+   Now run the onboarding wizard:
    ```bash
    docker compose run --rm -it openclaw-cli onboard
    ```
-   Follow the interactive prompts to finish the initial configuration. Once done, restart the stack:
+
+   When prompted for **Model/Auth provider**, follow the path for your setup:
+
+   - **OpenAI or Anthropic**: Simply select your provider from the list and enter your API key when prompted.
+   - **Local Ollama model**: Select **Custom provider**, then fill in the prompts as follows:
+     - **Base URL:** `http://ollama:11434/v1`
+     - **API Key:** choose *paste API key now* and leave it blank (just press Enter)
+     - **Endpoint compatibility:** `OpenAI-compatible`
+     - **Model ID:** the exact model you pulled, e.g. `qwen2.5-coder:14b`
+     - **Endpoint ID:** a short slug, e.g. `ollama-qwen`
+     - **Alias:** e.g. `ollama`
+
+   Follow the remaining prompts to finish the initial configuration. Once done, restart the stack:
    ```bash
    docker compose up -d
    ```
@@ -115,21 +146,7 @@ If you want fast responses and do not mind paying for API usage:
 ### Option 2: Using Free Local Models (Ollama)
 This repository comes pre-configured with a private **Ollama** container. This allows you to download open-source AI models and run them entirely on your VPS's CPU and RAM for free. *(Note: Without a GPU, generation speed will be noticeably slower than Option 1)*.
 
-**Step A: Download a Model**
-First, you need to tell the Ollama container to download a model (like `llama3:8b` or `qwen2.5:7b`). Run this command on your VPS terminal:
-```bash
-docker exec -it ollama ollama run llama3:8b
-```
-*(Type `/bye` to exit the chat prompt once it finishes downloading).*
-
-**Step B: Connect OpenClaw to Ollama**
-Because they share the same Docker network, OpenClaw does not need an API key to talk to Ollama. 
-1. Open the OpenClaw Web UI (`http://localhost:18789`).
-2. Go to **Settings** > **AI Providers**.
-3. Find the **Ollama** section.
-4. Set the **Provider URL** strictly to `http://ollama:11434`. *(Do not use localhost or an IP address, the word `ollama` uses Docker's internal DNS).*
-5. You can put anything (like `ollama-local`) in the API Key box, as Ollama doesn't actually check it.
-6. When starting a chat, select your downloaded local model (e.g., `llama3:8b`) from the dropdown!
+The full setup for Ollama is covered in **Step 6** of the Deployment Instructions above, as the model must be downloaded *before* running the onboarding wizard. The recommended model is `qwen2.5-coder:14b` (or `qwen2.5-coder:7b` for VPS with under 16 GB RAM).
 
 *If you change your mind and no longer want to host local models, simply delete the `ollama:` block from your `docker-compose.yml` and run `docker compose up -d` to clean it up.*
 
