@@ -61,6 +61,17 @@ If you are like me and run other active services (websites, databases, etc.) on 
    ```
    *Note: If you run `ufw status` on your VPS, you do NOT need to open port 18789. The `docker-compose.yml` is hardcoded to `127.0.0.1`, making it invisible to the outside world.*
 
+6. **Complete the First-Time Onboarding:**
+   After the first launch, the `openclaw-cli` container will exit immediately and disappear from `docker ps`. This is **expected** — it means the CLI has not been configured yet. Run the onboarding command to complete the setup:
+   ```bash
+   docker compose run --rm -it openclaw-cli onboard
+   ```
+   Follow the interactive prompts to finish the initial configuration. Once done, restart the stack:
+   ```bash
+   docker compose up -d
+   ```
+   The CLI container should now stay running.
+
 ## Accessing the Admin Interface
 
 Because the web UI is blocked from the internet, you cannot just type your VPS IP into your browser. You must create a secure "tunnel" from your personal computer to the VPS.
@@ -135,3 +146,13 @@ Because they share the same Docker network, OpenClaw does not need an API key to
 ## Data Persistence
 
 All OpenClaw container data, including standard configurations and active workspaces, are bound to the `OPENCLAW_CONFIG_DIR` and `OPENCLAW_WORKSPACE_DIR`. This ensures data is maintained across container restarts and lifecycle updates.
+
+## Troubleshooting
+
+### Error: `EACCES: permission denied, open '/home/node/.openclaw/node.json...'`
+If you are running `docker compose` as the `root` user on your VPS, any data folders you mapped (like `~/Tools/openclaw-config`) will be owned by `root`. However, OpenClaw intentionally runs as a restricted, non-root user named `node` (User ID 1000) inside the container for security.
+
+Because `node` cannot write to a `root`-owned folder, it crashes. To fix this, you must change the ownership of your host folders to UID 1000:
+   ```bash
+   chown -R 1000:1000 ~/Tools/openclaw-config ~/Tools/openclaw-workspace
+   ```
