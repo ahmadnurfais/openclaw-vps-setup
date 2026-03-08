@@ -112,7 +112,7 @@ Because the web UI is blocked from the internet, you cannot just type your VPS I
 1. **On your personal laptop/computer**, open a terminal or command prompt.
 2. Run the following SSH Tunnel command (replace `root@your-vps-ip` with your actual VPS login):
    ```bash
-   ssh -L 18789:localhost:18789 root@your-vps-ip
+   ssh -L 18789:localhost:18789 -L 18790:localhost:18790 root@your-vps-ip
    ```
 3. Leave that terminal window open! As long as it is running, the tunnel connects your laptop to the secure OpenClaw server.
 4. Open your web browser and go to: `http://localhost:18789`
@@ -126,7 +126,7 @@ If your server requires a specific `.pem` file to connect via SSH (common on AWS
 
 1. Run the SSH Tunnel command, pointing to your `.pem` key:
    ```bash
-   ssh -i /path/to/your/key.pem -L 18789:localhost:18789 root@your-vps-ip
+   ssh -i /path/to/your/key.pem -L 18789:localhost:18789 -L 18790:localhost:18790 root@your-vps-ip
    ```
 2. Leave the terminal window open to maintain the connection.
 3. Open your web browser and go to: `http://localhost:18789`
@@ -165,6 +165,17 @@ The full setup for Ollama is covered in **Step 6** of the Deployment Instruction
 All OpenClaw container data, including standard configurations and active workspaces, are bound to the `OPENCLAW_CONFIG_DIR` and `OPENCLAW_WORKSPACE_DIR`. This ensures data is maintained across container restarts and lifecycle updates.
 
 ## Troubleshooting
+
+### Web UI shows "Disconnected from Gateway"
+If the web UI loads but shows a "Disconnected from Gateway" message, it means your device (browser session) has not been approved yet. Run this command on your VPS to list pending device requests:
+```bash
+docker compose run --rm openclaw-cli devices list
+```
+Find the entry with a **pending** status and note its request ID, then approve it:
+```bash
+docker compose run --rm openclaw-cli devices approve <request_id>
+```
+Refresh the web UI — it should now connect successfully.
 
 ### Error: `EACCES: permission denied, open '/home/node/.openclaw/node.json...'`
 If you are running `docker compose` as the `root` user on your VPS, any data folders you mapped (like `~/Tools/openclaw-config`) will be owned by `root`. However, OpenClaw intentionally runs as a restricted, non-root user named `node` (User ID 1000) inside the container for security.
